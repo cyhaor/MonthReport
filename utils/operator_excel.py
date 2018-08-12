@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 import win32com.client
 
+from utils.mylogger import logger
+
 
 class EasyExcel:
-    """A utility to make it easier to get at Excel.  Remembering
-    to save the data is your problem, as is  error handling.
-    Operates on one workbook at a time."""
-
     def __init__(self, filename=None):
         self.xlApp = win32com.client.Dispatch('Excel.Application')
         self.xlApp.Visible = 0
@@ -14,27 +12,40 @@ class EasyExcel:
         if filename:
             self.filename = filename
             self.xlBook = self.xlApp.Workbooks.Open(filename)
+            logger.info('Open %s success.' % filename)
         else:
-            self.xlBook = self.xlApp.Workbooks.Add()
-            self.filename = ''
+            logger.error('There was no file:%s' % filename)
 
     def save(self, new_filename=None):
         if new_filename:
             self.filename = new_filename
             self.xlBook.SaveAs(new_filename)
+            logger.info('Save template as new file %s success.' % new_filename)
         else:
-            self.xlBook.Save()
+            logger.error('There have no new template file name : %s.' % new_filename)
 
     def close(self):
         self.xlBook.Close(SaveChanges=0)
         self.xlApp.Application.Quit()
         del self.xlApp
+        logger.info('Close template excel success.')
 
-    def set_para(self, parameter, values):
-        self.xlBook.Names(parameter).RefersToRange.Value = values
+    def set_para(self, parameter, value):
+        self.xlBook.Names(parameter).RefersToRange.Value = value
+        logger.info('Set template parameter: %s as value: %s' % (parameter, value))
 
-    def save_as_pdf(self, output_pdf):
-        self.xlBook.ExportAsFixedFormat(0, output_pdf, 1, 1, 1, 1, 6)  # 指定1-6页打印
+    def set_table_para(self, parameter, values):
+        for index in range(len(values)):
+            self.xlBook.Names(parameter).RefersToRange(index + 1).Value = values[index]
+            print("set %s done.", parameter)
+        logger.info('Set template parameter: %s as value: %s' % (parameter, values))
+
+    def save_as_pdf(self, output_pdf=None):
+        if output_pdf:
+            self.xlBook.ExportAsFixedFormat(0, output_pdf, 1, 1, 1, 1, 6)  # 指定1-6页打印
+            logger.info('Save template as PDF file %s success.' % output_pdf)
+        else:
+            logger.error('Save template as PDF file %s success.' % output_pdf)
 
     def get_cell(self, sheet, row, col):
         """Get value of one cell"""
@@ -103,12 +114,3 @@ class EasyExcel:
             right = right + 1
         # 设置第一行若干列为粗体
         return sht.Range(sht.Cells(row, col), sht.Cells(bottom, right)).Value
-
-
-if __name__ == "__main__":
-    xls = EasyExcel("C:\\Users\\cyhao\\PycharmProjects\\MonthReportDraft\\test\\testDemoInput.xlsx")
-    pdf = "C:\\Users\\cyhao\\PycharmProjects\\MonthReportDraft\\test\\out.pdf"
-    xls.set_para("maxErrorModuleNumPercentDevice1", "100%")
-    xls.save_as_pdf(pdf)
-    xls.save("C:\\Users\\cyhao\\PycharmProjects\\MonthReportDraft\\test\\testDemoOut.xlsx")
-    xls.close()
